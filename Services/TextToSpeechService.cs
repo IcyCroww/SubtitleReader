@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Speech.Synthesis;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,18 +8,20 @@ using SubtitleReader.Models;
 
 namespace SubtitleReader.Services;
 
-public class TextToSpeechService : IDisposable
+/// <summary>
+/// Сервис синтеза речи
+/// </summary>
+public sealed class TextToSpeechService : IDisposable
 {
-    private readonly SpeechSynthesizer _synthesizer;
-    private CancellationTokenSource? _cancellationTokenSource;
+    private readonly SpeechSynthesizer _synthesizer = new();
+    private CancellationTokenSource? _cts;
     private bool _isDisposed;
     private bool _isSpeaking;
     private int _volume = 100;
 
     public TextToSpeechService()
     {
-        _synthesizer = new SpeechSynthesizer();
-        _synthesizer.SpeakCompleted += (s, e) => _isSpeaking = false;
+        _synthesizer.SpeakCompleted += (_, _) => _isSpeaking = false;
         _synthesizer.SetOutputToDefaultAudioDevice();
     }
 
@@ -34,90 +37,55 @@ public class TextToSpeechService : IDisposable
         }
     }
 
-    /// <summary>
-    /// Получает список доступных голосов
-    /// </summary>
-    public IReadOnlyCollection<InstalledVoice> GetAvailableVoices()
-    {
-        return _synthesizer.GetInstalledVoices();
-    }
+    public IReadOnlyCollection<InstalledVoice> GetAvailableVoices() => 
+        _synthesizer.GetInstalledVoices();
 
-    /// <summary>
-    /// Устанавливает голос по имени
-    /// </summary>
     public bool SetVoice(string voiceName)
     {
+        if (string.IsNullOrEmpty(voiceName))
+            return false;
+
         try
         {
-            if (string.IsNullOrEmpty(voiceName))
-                return false;
-
             _synthesizer.SelectVoice(voiceName);
             return true;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Ошибка установки голоса: {ex.Message}");
+            Debug.WriteLine($"[TTS] Ошибка голоса: {ex.Message}");
             return false;
         }
     }
 
-    /// <summary>
-    /// Получает текущий голос
-    /// </summary>
-    public string GetCurrentVoice()
-    {
-        return _synthesizer.Voice?.Name ?? string.Empty;
-    }
+    public string GetCurrentVoice() => _synthesizer.Voice?.Name ?? string.Empty;
 
-    /// <summary>
-    /// Читает текст из области асинхронно
-    /// </summary>
-    public async Task SpeakAsync(TextRegion region)
-    {
-        if (string.IsNullOrWhiteSpace(region.Text))
-            return;
+    public Task SpeakAsync(TextRegion region) =>
+        string.IsNullOrWhiteSpace(region?.Text) ? Task.CompletedTask : SpeakAsync(region.Text, region.ReadingSpeed);
 
-        await SpeakAsync(region.Text, region.ReadingSpeed);
-    }
-
-    /// <summary>
-    /// Читает текст асинхронно с указанной скоростью
-    /// </summary>
     public async Task SpeakAsync(string text, double speedMultiplier = 1.0)
     {
         if (string.IsNullOrWhiteSpace(text))
             return;
 
         Stop();
-
-        _cancellationTokenSource = new CancellationTokenSource();
-        var token = _cancellationTokenSource.Token;
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
 
         try
         {
             _isSpeaking = true;
-
-            // Преобразуем множитель скорости (0.5-2.0) в диапазон -10 до 10
-            int rate = (int)((speedMultiplier - 1.0) * 10);
-            rate = Math.Clamp(rate, -10, 10);
-            _synthesizer.Rate = rate;
+            _synthesizer.Rate = SpeedToRate(speedMultiplier);
 
             await Task.Run(() =>
             {
                 if (!token.IsCancellationRequested)
-                {
                     _synthesizer.Speak(text);
-                }
             }, token);
         }
-        catch (OperationCanceledException)
-        {
-            // Отмена - это нормально
-        }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Ошибка синтеза речи: {ex.Message}");
+            Debug.WriteLine($"[TTS] Ошибка: {ex.Message}");
         }
         finally
         {
@@ -125,9 +93,6 @@ public class TextToSpeechService : IDisposable
         }
     }
 
-    /// <summary>
-    /// Читает текст асинхронно (не блокирует)
-    /// </summary>
     public void SpeakAsyncNonBlocking(string text, double speedMultiplier = 1.5)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -136,84 +101,50 @@ public class TextToSpeechService : IDisposable
         try
         {
             _isSpeaking = true;
-
-            // Увеличиваем скорость - делаем более быстрое чтение
-            int rate = (int)((speedMultiplier - 1.0) * 10);
-            rate = Math.Clamp(rate, -10, 10);
-            _synthesizer.Rate = rate;
-
-            // Очищаем очередь и добавляем новый текст
+            _synthesizer.Rate = SpeedToRate(speedMultiplier);
             _synthesizer.SpeakAsyncCancelAll();
             _synthesizer.SpeakAsync(text);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Ошибка синтеза речи: {ex.Message}");
+            Debug.WriteLine($"[TTS] Ошибка: {ex.Message}");
             _isSpeaking = false;
         }
     }
 
-    /// <summary>
-    /// Останавливает чтение
-    /// </summary>
+    private static int SpeedToRate(double speed) => 
+        Math.Clamp((int)((speed - 1.0) * 10), -10, 10);
+
     public void Stop()
     {
         try
         {
-            _cancellationTokenSource?.Cancel();
+            _cts?.Cancel();
             _synthesizer.SpeakAsyncCancelAll();
             _isSpeaking = false;
         }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Ошибка остановки речи: {ex.Message}");
-        }
+        catch { }
     }
 
-    /// <summary>
-    /// Приостанавливает чтение
-    /// </summary>
     public void Pause()
     {
-        try
-        {
-            if (_synthesizer.State == SynthesizerState.Speaking)
-            {
-                _synthesizer.Pause();
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Ошибка паузы: {ex.Message}");
-        }
+        if (_synthesizer.State == SynthesizerState.Speaking)
+            _synthesizer.Pause();
     }
 
-    /// <summary>
-    /// Возобновляет чтение
-    /// </summary>
     public void Resume()
     {
-        try
-        {
-            if (_synthesizer.State == SynthesizerState.Paused)
-            {
-                _synthesizer.Resume();
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Ошибка возобновления: {ex.Message}");
-        }
+        if (_synthesizer.State == SynthesizerState.Paused)
+            _synthesizer.Resume();
     }
 
     public void Dispose()
     {
-        if (!_isDisposed)
-        {
-            Stop();
-            _synthesizer.Dispose();
-            _cancellationTokenSource?.Dispose();
-            _isDisposed = true;
-        }
+        if (_isDisposed) return;
+        
+        Stop();
+        _synthesizer.Dispose();
+        _cts?.Dispose();
+        _isDisposed = true;
     }
 }

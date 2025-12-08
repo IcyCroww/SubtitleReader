@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -11,18 +12,18 @@ using Windows.Storage.Streams;
 namespace SubtitleReader.Services;
 
 /// <summary>
-/// OCR сервис - использует Windows OCR (лучше для игровых шрифтов)
+/// OCR сервис - использует Windows OCR (оптимизирован для игровых шрифтов)
 /// </summary>
-public class OcrService : IDisposable
+public sealed class OcrService : IDisposable
 {
-    private readonly ScreenCaptureService _screenCapture;
+    private readonly ScreenCaptureService _screenCapture = new();
     private OcrEngine? _ocrEngine;
     private string _currentLanguage = "ru";
-    private bool _isDisposed;
+
+    private const int ScaleFactor = 2;
 
     public OcrService()
     {
-        _screenCapture = new ScreenCaptureService();
         InitializeEngine();
     }
 
@@ -30,34 +31,28 @@ public class OcrService : IDisposable
     {
         try
         {
-            // Пробуем русский язык
-            var ruLanguage = new Windows.Globalization.Language("ru");
-            if (OcrEngine.IsLanguageSupported(ruLanguage))
+            // Приоритет языков: русский -> английский -> системный
+            var languages = new[] { "ru", "en" };
+            
+            foreach (var lang in languages)
             {
-                _ocrEngine = OcrEngine.TryCreateFromLanguage(ruLanguage);
-                _currentLanguage = "ru";
-                System.Diagnostics.Debug.WriteLine("[OCR] Windows OCR инициализирован с русским языком");
-                return;
+                var language = new Windows.Globalization.Language(lang);
+                if (OcrEngine.IsLanguageSupported(language))
+                {
+                    _ocrEngine = OcrEngine.TryCreateFromLanguage(language);
+                    _currentLanguage = lang;
+                    Debug.WriteLine($"[OCR] Инициализирован: {lang}");
+                    return;
+                }
             }
 
-            // Пробуем английский
-            var enLanguage = new Windows.Globalization.Language("en");
-            if (OcrEngine.IsLanguageSupported(enLanguage))
-            {
-                _ocrEngine = OcrEngine.TryCreateFromLanguage(enLanguage);
-                _currentLanguage = "en";
-                System.Diagnostics.Debug.WriteLine("[OCR] Windows OCR инициализирован с английским языком");
-                return;
-            }
-
-            // Используем язык по умолчанию
             _ocrEngine = OcrEngine.TryCreateFromUserProfileLanguages();
             _currentLanguage = "auto";
-            System.Diagnostics.Debug.WriteLine("[OCR] Windows OCR инициализирован с языком по умолчанию");
+            Debug.WriteLine("[OCR] Инициализирован: системный язык");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[OCR] Ошибка инициализации: {ex.Message}");
+            Debug.WriteLine($"[OCR] Ошибка инициализации: {ex.Message}");
         }
     }
 
@@ -69,93 +64,63 @@ public class OcrService : IDisposable
     /// </summary>
     public async Task<string> RecognizeRegionAsync(System.Windows.Rect region)
     {
-        if (_ocrEngine == null)
-        {
-            System.Diagnostics.Debug.WriteLine("[OCR] Engine не инициализирован!");
+        if (_ocrEngine == null || region.Width <= 0 || region.Height <= 0)
             return string.Empty;
-        }
-
-        if (region.Width <= 0 || region.Height <= 0)
-        {
-            return string.Empty;
-        }
 
         try
         {
-            // Захватываем область экрана
             using var screenshot = _screenCapture.CaptureRegion(region);
             if (screenshot == null)
-            {
-                System.Diagnostics.Debug.WriteLine("[OCR] Не удалось захватить скриншот");
                 return string.Empty;
-            }
 
-            // Увеличиваем изображение для лучшего распознавания
-            using var scaled = ScaleImage(screenshot, 2);
-
-            // Конвертируем в SoftwareBitmap для Windows OCR
-            var softwareBitmap = await ConvertToSoftwareBitmapAsync(scaled);
+            using var scaled = ScaleImage(screenshot, ScaleFactor);
+            using var softwareBitmap = await ConvertToSoftwareBitmapAsync(scaled);
+            
             if (softwareBitmap == null)
-            {
                 return string.Empty;
-            }
 
-            // Распознаём текст
             var result = await _ocrEngine.RecognizeAsync(softwareBitmap);
-            
-            var text = result.Text?.Trim() ?? string.Empty;
-            
-            if (!string.IsNullOrEmpty(text))
-            {
-                System.Diagnostics.Debug.WriteLine($"[OCR] Распознано: {text.Substring(0, Math.Min(50, text.Length))}...");
-            }
-            
-            return text;
+            return result.Text?.Trim() ?? string.Empty;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[OCR] Ошибка: {ex.Message}");
+            Debug.WriteLine($"[OCR] Ошибка: {ex.Message}");
             return string.Empty;
         }
     }
 
-    private Bitmap ScaleImage(Bitmap source, int scale)
+    private static Bitmap ScaleImage(Bitmap source, int scale)
     {
-        int newWidth = source.Width * scale;
-        int newHeight = source.Height * scale;
+        var newWidth = source.Width * scale;
+        var newHeight = source.Height * scale;
 
         var scaled = new Bitmap(newWidth, newHeight);
-        using (var graphics = Graphics.FromImage(scaled))
-        {
-            graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-            graphics.DrawImage(source, 0, 0, newWidth, newHeight);
-        }
+        using var graphics = Graphics.FromImage(scaled);
+        graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+        graphics.DrawImage(source, 0, 0, newWidth, newHeight);
         return scaled;
     }
 
-    private async Task<SoftwareBitmap?> ConvertToSoftwareBitmapAsync(Bitmap bitmap)
+    private static async Task<SoftwareBitmap?> ConvertToSoftwareBitmapAsync(Bitmap bitmap)
     {
         try
         {
             using var ms = new MemoryStream();
-            bitmap.Save(ms, ImageFormat.Png);
-            ms.Position = 0;
+            bitmap.Save(ms, ImageFormat.Bmp); // BMP быстрее чем PNG
+            
+            var buffer = ms.ToArray().AsBuffer();
+            using var stream = new InMemoryRandomAccessStream();
+            await stream.WriteAsync(buffer);
+            stream.Seek(0);
 
-            var randomAccessStream = new InMemoryRandomAccessStream();
-            await randomAccessStream.WriteAsync(ms.ToArray().AsBuffer());
-            randomAccessStream.Seek(0);
-
-            var decoder = await BitmapDecoder.CreateAsync(randomAccessStream);
-            var softwareBitmap = await decoder.GetSoftwareBitmapAsync(
+            var decoder = await BitmapDecoder.CreateAsync(stream);
+            return await decoder.GetSoftwareBitmapAsync(
                 BitmapPixelFormat.Bgra8, 
                 BitmapAlphaMode.Premultiplied);
-
-            return softwareBitmap;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[OCR] Ошибка конвертации: {ex.Message}");
+            Debug.WriteLine($"[OCR] Ошибка конвертации: {ex.Message}");
             return null;
         }
     }
@@ -173,15 +138,9 @@ public class OcrService : IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[OCR] Ошибка смены языка: {ex.Message}");
+            Debug.WriteLine($"[OCR] Ошибка смены языка: {ex.Message}");
         }
     }
 
-    public void Dispose()
-    {
-        if (!_isDisposed)
-        {
-            _isDisposed = true;
-        }
-    }
+    public void Dispose() { }
 }

@@ -1,22 +1,26 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 
 namespace SubtitleReader.Models;
 
-public class TextRegion : INotifyPropertyChanged
+/// <summary>
+/// Модель области экрана для OCR распознавания
+/// </summary>
+public sealed class TextRegion : INotifyPropertyChanged
 {
     private string _id = Guid.NewGuid().ToString();
     private string _name = "Новая область";
     private Rect _bounds;
     private string _text = string.Empty;
     private string _lastRecognizedText = string.Empty;
-    private double _readingSpeed = 1.8; // Быстрая скорость чтения
+    private double _readingSpeed = 1.8;
     private bool _isActive = true;
-    private bool _autoRead = true; // Авто-чтение включено по умолчанию!
-    private int _monitorIntervalMs = 200; // Быстрая проверка каждые 200мс
-    private bool _isMonitoring = false;
+    private bool _autoRead = true;
+    private int _monitorIntervalMs = 200;
+    private bool _isMonitoring;
 
     public string Id
     {
@@ -129,12 +133,12 @@ public class TextRegion : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value)) return false;
         field = value;
