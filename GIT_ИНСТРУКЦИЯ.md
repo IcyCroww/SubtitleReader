@@ -15,15 +15,24 @@
 - Нажми "Create repository"
 
 ### 2. Подключи удалённый репозиторий
-После создания GitHub покажет команды. Используй эти:
+**ВАЖНО:** Команды нужно запускать из папки `SubtitleReader\SubtitleReader` (там где .git)!
 
 ```bash
+cd C:\Users\pavel\Desktop\SubtitleReader\SubtitleReader
 git remote add origin https://github.com/ТвойЛогин/SubtitleReader.git
 git branch -M main
 git push -u origin main
 ```
 
 Замени `ТвойЛогин` на свой логин GitHub!
+
+**Или короче (если уже в папке SubtitleReader):**
+```bash
+cd SubtitleReader
+git remote add origin https://github.com/ТвойЛогин/SubtitleReader.git
+git branch -M main
+git push -u origin main
+```
 
 ### 3. Готово!
 Твой проект теперь на GitHub 🎉
