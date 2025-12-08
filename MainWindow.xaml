@@ -546,35 +546,40 @@
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         
-                        <StackPanel Grid.Column="0" Orientation="Horizontal">
-                            <Button Content="▶ Читать" 
+                        <!-- Чтение -->
+                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                            <TextBlock Text="🔊 Чтение" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,8"/>
+                            <Button Content="▶ Читать выбранную область" 
                                     Style="{StaticResource SuccessButton}"
                                     Command="{Binding ReadRegionCommand}"
-                                    Margin="0,0,8,0"/>
-                            <Button Content="⏹ Стоп" 
+                                    HorizontalAlignment="Stretch"
+                                    Margin="0,0,0,6"/>
+                            <Button Content="▶▶ Читать все области" 
+                                    Style="{StaticResource ModernButton}"
+                                    Command="{Binding ReadAllRegionsCommand}"
+                                    HorizontalAlignment="Stretch"
+                                    Margin="0,0,0,6"/>
+                            <Button Content="⏹ Остановить чтение" 
                                     Style="{StaticResource DangerButton}"
                                     Command="{Binding StopReadingCommand}"
-                                    Margin="0,0,8,0"/>
-                            <Button Content="▶▶ Читать всё" 
-                                    Style="{StaticResource ModernButton}"
-                                    Command="{Binding ReadAllRegionsCommand}"/>
+                                    HorizontalAlignment="Stretch"/>
                         </StackPanel>
                         
-                        <!-- Разделитель -->
-                        <Border Grid.Column="1" Width="2" Background="{StaticResource BorderBrush}" Margin="16,0"/>
-                        
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="🔄 Старт мониторинга" 
+                        <!-- Мониторинг -->
+                        <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                            <TextBlock Text="🔄 Мониторинг" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,8"/>
+                            <Button Content="🔄 Начать мониторинг" 
                                     Style="{StaticResource SuccessButton}"
                                     Command="{Binding StartMonitoringCommand}"
-                                    Margin="0,0,8,0"/>
-                            <Button Content="⏸ Стоп мониторинга" 
+                                    HorizontalAlignment="Stretch"
+                                    Margin="0,0,0,6"/>
+                            <Button Content="⏸ Остановить мониторинг" 
                                     Style="{StaticResource DangerButton}"
-                                    Command="{Binding StopMonitoringCommand}"/>
+                                    Command="{Binding StopMonitoringCommand}"
+                                    HorizontalAlignment="Stretch"/>
                         </StackPanel>
                     </Grid>
                 </Border>
