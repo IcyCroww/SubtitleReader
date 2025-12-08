@@ -96,6 +96,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         CopyTextCommand = new RelayCommand(_ => CopyText(), _ => SelectedRegion != null && !string.IsNullOrEmpty(SelectedRegion.Text));
         ClearHistoryCommand = new RelayCommand(_ => ClearHistory(), _ => TextHistory.Count > 0);
         ExportHistoryCommand = new RelayCommand(_ => ExportHistory(), _ => TextHistory.Count > 0);
+        AutoDetectRegionsCommand = new RelayCommand(_ => AutoDetectRegions());
     }
 
     #region Properties
@@ -203,6 +204,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     public ICommand CopyTextCommand { get; private set; } = null!;
     public ICommand ClearHistoryCommand { get; private set; } = null!;
     public ICommand ExportHistoryCommand { get; private set; } = null!;
+    public ICommand AutoDetectRegionsCommand { get; private set; } = null!;
 
     #endregion
 
@@ -396,6 +398,47 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         catch (Exception ex)
         {
             StatusMessage = $"Ошибка экспорта: {ex.Message}";
+        }
+    }
+
+    private void AutoDetectRegions()
+    {
+        try
+        {
+            StatusMessage = "Поиск областей с субтитрами...";
+            
+            var detector = new SubtitleDetectorService();
+            
+            // Сначала пробуем автоопределение
+            var detected = detector.DetectTextRegions();
+            
+            if (detected.Count == 0)
+            {
+                // Если не нашли, предлагаем стандартные области
+                detected = detector.GetDefaultSubtitleRegions();
+                StatusMessage = "Добавлены стандартные области для субтитров";
+            }
+            else
+            {
+                StatusMessage = $"Найдено {detected.Count} областей с текстом";
+            }
+
+            foreach (var rect in detected.Take(4)) // Максимум 4 области
+            {
+                var region = new TextRegion
+                {
+                    Name = $"Авто-область {Regions.Count + 1}",
+                    Bounds = rect,
+                    ReadingSpeed = _settings.DefaultReadingSpeed
+                };
+                Regions.Add(region);
+            }
+
+            SelectedRegion = Regions.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Ошибка автоопределения: {ex.Message}";
         }
     }
 
@@ -597,10 +640,21 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
     private void LoadPresets()
     {
+        // Загружаем пользовательские пресеты
         var presets = _presetService.LoadPresets();
         foreach (var preset in presets)
         {
             Presets.Add(preset);
+        }
+
+        // Добавляем встроенные пресеты для игр (если нет пользовательских)
+        if (Presets.Count == 0)
+        {
+            var builtIn = GamePresetsService.GetBuiltInPresets();
+            foreach (var preset in builtIn)
+            {
+                Presets.Add(preset);
+            }
         }
     }
 

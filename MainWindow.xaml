@@ -314,6 +314,11 @@
                         <Button Content="🎯 Выделить область на экране" 
                                 Style="{StaticResource SuccessButton}"
                                 Command="{Binding AddRegionFromScreenCommand}"
+                                Margin="0,0,0,6"/>
+                        <Button Content="🔍 Автоопределение субтитров" 
+                                Style="{StaticResource ModernButton}"
+                                Command="{Binding AutoDetectRegionsCommand}"
+                                ToolTip="Автоматически найти области с субтитрами"
                                 Margin="0,0,0,8"/>
                         <Grid>
                             <Grid.ColumnDefinitions>
