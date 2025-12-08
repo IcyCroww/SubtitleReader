@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using Windows.Graphics.Imaging;
@@ -12,20 +14,25 @@ using Windows.Storage.Streams;
 namespace SubtitleReader.Services;
 
 /// <summary>
-/// OCR сервис - использует Windows OCR (оптимизирован для игровых шрифтов)
+/// OCR сервис с кэшированием - не распознаёт если изображение не изменилось
 /// </summary>
 public sealed class OcrService : IDisposable
 {
     private readonly ScreenCaptureService _screenCapture = new();
+    private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
     private OcrEngine? _ocrEngine;
     private string _currentLanguage = "ru";
 
     private const int ScaleFactor = 2;
+    private const int MaxCacheSize = 50;
+    private static readonly TimeSpan CacheExpiry = TimeSpan.FromSeconds(30);
 
     public OcrService()
     {
         InitializeEngine();
     }
+
+    private record CacheEntry(string Text, DateTime CreatedAt, byte[] ImageHash);
 
     private void InitializeEngine()
     {
@@ -60,7 +67,7 @@ public sealed class OcrService : IDisposable
     public string CurrentLanguage => _currentLanguage;
 
     /// <summary>
-    /// Распознаёт текст в указанной области экрана
+    /// Распознаёт текст в указанной области экрана (с кэшированием)
     /// </summary>
     public async Task<string> RecognizeRegionAsync(System.Windows.Rect region)
     {
@@ -73,6 +80,21 @@ public sealed class OcrService : IDisposable
             if (screenshot == null)
                 return string.Empty;
 
+            // Вычисляем хэш изображения для кэширования
+            var imageHash = ComputeImageHash(screenshot);
+            var cacheKey = $"{region.X}_{region.Y}_{region.Width}_{region.Height}";
+
+            // Проверяем кэш
+            if (_cache.TryGetValue(cacheKey, out var cached))
+            {
+                if (cached.ImageHash.AsSpan().SequenceEqual(imageHash) && 
+                    DateTime.Now - cached.CreatedAt < CacheExpiry)
+                {
+                    return cached.Text; // Изображение не изменилось
+                }
+            }
+
+            // Распознаём текст
             using var scaled = ScaleImage(screenshot, ScaleFactor);
             using var softwareBitmap = await ConvertToSoftwareBitmapAsync(scaled);
             
@@ -80,13 +102,58 @@ public sealed class OcrService : IDisposable
                 return string.Empty;
 
             var result = await _ocrEngine.RecognizeAsync(softwareBitmap);
-            return result.Text?.Trim() ?? string.Empty;
+            var text = result.Text?.Trim() ?? string.Empty;
+
+            // Сохраняем в кэш
+            _cache[cacheKey] = new CacheEntry(text, DateTime.Now, imageHash);
+            CleanupCache();
+
+            return text;
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"[OCR] Ошибка: {ex.Message}");
             return string.Empty;
         }
+    }
+
+    /// <summary>
+    /// Быстрый хэш изображения (сэмплирование пикселей)
+    /// </summary>
+    private static byte[] ComputeImageHash(Bitmap bitmap)
+    {
+        // Берём сэмпл пикселей для быстрого сравнения
+        var samples = new byte[64];
+        var stepX = Math.Max(1, bitmap.Width / 8);
+        var stepY = Math.Max(1, bitmap.Height / 8);
+        var idx = 0;
+
+        for (var y = 0; y < 8 && y * stepY < bitmap.Height; y++)
+        {
+            for (var x = 0; x < 8 && x * stepX < bitmap.Width; x++)
+            {
+                var pixel = bitmap.GetPixel(x * stepX, y * stepY);
+                samples[idx++] = (byte)((pixel.R + pixel.G + pixel.B) / 3);
+            }
+        }
+
+        return samples;
+    }
+
+    /// <summary>
+    /// Очистка старых записей кэша
+    /// </summary>
+    private void CleanupCache()
+    {
+        if (_cache.Count <= MaxCacheSize) return;
+
+        var keysToRemove = _cache
+            .Where(x => DateTime.Now - x.Value.CreatedAt > CacheExpiry)
+            .Select(x => x.Key)
+            .ToList();
+
+        foreach (var key in keysToRemove)
+            _cache.TryRemove(key, out _);
     }
 
     private static Bitmap ScaleImage(Bitmap source, int scale)
@@ -142,5 +209,7 @@ public sealed class OcrService : IDisposable
         }
     }
 
-    public void Dispose() { }
+    public void ClearCache() => _cache.Clear();
+
+    public void Dispose() => _cache.Clear();
 }

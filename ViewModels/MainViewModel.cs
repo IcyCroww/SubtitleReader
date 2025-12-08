@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -27,11 +28,13 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private TextRegion? _selectedRegion;
     private GamePreset? _currentPreset;
     private AppSettings _settings;
-    private string _statusMessage = "Готов к работе";
+    private string _statusMessage = "Готов к работе | F9: Старт/Стоп | F10: Стоп чтения";
     private bool _isMonitoringActive;
     private bool _isOverlayVisible;
     private OverlayWindow? _overlayWindow;
     private bool _isDisposed;
+
+    private const int MaxHistorySize = 100;
 
     public MainViewModel()
     {
@@ -41,9 +44,13 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         _monitorService = new RegionMonitorService(_ocrService, _ttsService);
         _settingsService = new SettingsService();
         _settings = _settingsService.LoadSettings();
+        
+        // Передаём настройки в монитор для фильтрации
+        _monitorService.Settings = _settings;
 
         Regions = new ObservableCollection<TextRegion>();
         Presets = new ObservableCollection<GamePreset>();
+        TextHistory = new ObservableCollection<TextHistoryEntry>();
 
         // Применяем настройки
         ApplySettings();
@@ -87,12 +94,15 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         ToggleOverlayCommand = new RelayCommand(_ => ToggleOverlay());
         ReselectRegionCommand = new RelayCommand(_ => ReselectRegion(), _ => SelectedRegion != null);
         CopyTextCommand = new RelayCommand(_ => CopyText(), _ => SelectedRegion != null && !string.IsNullOrEmpty(SelectedRegion.Text));
+        ClearHistoryCommand = new RelayCommand(_ => ClearHistory(), _ => TextHistory.Count > 0);
+        ExportHistoryCommand = new RelayCommand(_ => ExportHistory(), _ => TextHistory.Count > 0);
     }
 
     #region Properties
 
     public ObservableCollection<TextRegion> Regions { get; }
     public ObservableCollection<GamePreset> Presets { get; }
+    public ObservableCollection<TextHistoryEntry> TextHistory { get; }
 
     public TextRegion? SelectedRegion
     {
@@ -191,6 +201,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     public ICommand ToggleOverlayCommand { get; private set; } = null!;
     public ICommand ReselectRegionCommand { get; private set; } = null!;
     public ICommand CopyTextCommand { get; private set; } = null!;
+    public ICommand ClearHistoryCommand { get; private set; } = null!;
+    public ICommand ExportHistoryCommand { get; private set; } = null!;
 
     #endregion
 
@@ -332,6 +344,61 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    private void ClearHistory()
+    {
+        TextHistory.Clear();
+        StatusMessage = "История очищена";
+    }
+
+    private void ExportHistory()
+    {
+        try
+        {
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = "SRT файл|*.srt|Текстовый файл|*.txt",
+                DefaultExt = ".srt",
+                FileName = $"subtitles_{DateTime.Now:yyyy-MM-dd_HH-mm}"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                using var writer = new StreamWriter(dialog.FileName);
+                
+                if (dialog.FileName.EndsWith(".srt"))
+                {
+                    // Формат SRT
+                    var entries = TextHistory.Reverse().ToList();
+                    for (int i = 0; i < entries.Count; i++)
+                    {
+                        var entry = entries[i];
+                        var startTime = entry.Timestamp;
+                        var endTime = startTime.AddSeconds(3);
+                        
+                        writer.WriteLine(i + 1);
+                        writer.WriteLine($"{startTime:HH:mm:ss,fff} --> {endTime:HH:mm:ss,fff}");
+                        writer.WriteLine(entry.Text);
+                        writer.WriteLine();
+                    }
+                }
+                else
+                {
+                    // Простой текст
+                    foreach (var entry in TextHistory.Reverse())
+                    {
+                        writer.WriteLine($"[{entry.FormattedTime}] [{entry.RegionName}] {entry.Text}");
+                    }
+                }
+                
+                StatusMessage = $"История экспортирована: {Path.GetFileName(dialog.FileName)}";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Ошибка экспорта: {ex.Message}";
+        }
+    }
+
     #endregion
 
     #region OCR Methods
@@ -427,6 +494,19 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         Application.Current.Dispatcher.Invoke(() =>
         {
             StatusMessage = $"Новый текст в области: {e.Region.Name}";
+            
+            // Добавляем в историю
+            var entry = new TextHistoryEntry
+            {
+                RegionName = e.Region.Name,
+                Text = e.NewText,
+                WasRead = e.Region.AutoRead
+            };
+            TextHistory.Insert(0, entry);
+            
+            // Ограничиваем размер истории
+            while (TextHistory.Count > MaxHistorySize)
+                TextHistory.RemoveAt(TextHistory.Count - 1);
         });
     }
 

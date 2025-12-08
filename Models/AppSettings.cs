@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace SubtitleReader.Models;
@@ -15,6 +18,8 @@ public class AppSettings : INotifyPropertyChanged
     private string _hotKeyReadSelected = "F11";
     private bool _minimizeToTray = true;
     private bool _startMinimized = false;
+    private string _ignoredWords = string.Empty; // Слова через запятую
+    private int _minTextLength = 2; // Минимальная длина текста для чтения
 
     public string SelectedVoice
     {
@@ -74,6 +79,48 @@ public class AppSettings : INotifyPropertyChanged
     {
         get => _startMinimized;
         set => SetField(ref _startMinimized, value);
+    }
+
+    /// <summary>
+    /// Слова для игнорирования (через запятую)
+    /// </summary>
+    public string IgnoredWords
+    {
+        get => _ignoredWords;
+        set => SetField(ref _ignoredWords, value);
+    }
+
+    /// <summary>
+    /// Минимальная длина текста для чтения
+    /// </summary>
+    public int MinTextLength
+    {
+        get => _minTextLength;
+        set => SetField(ref _minTextLength, Math.Max(0, value));
+    }
+
+    /// <summary>
+    /// Проверяет нужно ли игнорировать текст
+    /// </summary>
+    public bool ShouldIgnoreText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return true;
+
+        if (text.Length < MinTextLength)
+            return true;
+
+        if (string.IsNullOrWhiteSpace(IgnoredWords))
+            return false;
+
+        var ignored = IgnoredWords.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(w => w.Trim().ToLower())
+            .ToHashSet();
+
+        var words = text.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        
+        // Игнорируем если весь текст состоит из игнорируемых слов
+        return words.All(w => ignored.Contains(w));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

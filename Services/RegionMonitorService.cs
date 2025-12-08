@@ -20,6 +20,11 @@ public sealed class RegionMonitorService : IDisposable
 
     private const double SimilarityThreshold = 0.9;
 
+    /// <summary>
+    /// Настройки для фильтрации текста
+    /// </summary>
+    public AppSettings? Settings { get; set; }
+
     public event EventHandler<TextChangedEventArgs>? TextChanged;
     public event EventHandler<RegionErrorEventArgs>? Error;
 
@@ -119,6 +124,14 @@ public sealed class RegionMonitorService : IDisposable
 
                 if (textChanged)
                 {
+                    // Проверяем фильтр
+                    var shouldIgnore = Settings?.ShouldIgnoreText(recognizedText) ?? false;
+                    if (shouldIgnore)
+                    {
+                        await Task.Delay(region.MonitorIntervalMs, token);
+                        continue;
+                    }
+
                     _lastTexts[region.Id] = normalizedText;
                     
                     System.Windows.Application.Current?.Dispatcher.Invoke(() =>
