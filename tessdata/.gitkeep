@@ -1,0 +1,5 @@
+# Поместите сюда языковые файлы Tesseract OCR:
+# - rus.traineddata (русский)
+# - eng.traineddata (английский)
+# 
+# Скачать можно с: https://github.com/tesseract-ocr/tessdata

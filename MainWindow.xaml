@@ -1,0 +1,704 @@
+﻿<Window x:Class="SubtitleReader.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="SubtitleReader - Читатель субтитров" 
+        Height="750" Width="1300"
+        MinHeight="600" MinWidth="1000"
+        WindowStartupLocation="CenterScreen"
+        Background="#1E1E2E"
+        Closing="Window_Closing">
+    
+    <Window.Resources>
+        <!-- Цветовая схема -->
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#7C3AED"/>
+        <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#6D28D9"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#10B981"/>
+        <SolidColorBrush x:Key="SuccessHoverBrush" Color="#059669"/>
+        <SolidColorBrush x:Key="DangerBrush" Color="#EF4444"/>
+        <SolidColorBrush x:Key="DangerHoverBrush" Color="#DC2626"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#F59E0B"/>
+        <SolidColorBrush x:Key="InfoBrush" Color="#3B82F6"/>
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#2D2D3F"/>
+        <SolidColorBrush x:Key="SurfaceLightBrush" Color="#3D3D52"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="TextMutedBrush" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#4B5563"/>
+        
+        <!-- Стиль кнопки -->
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}" 
+                                CornerRadius="6" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource PrimaryHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="{StaticResource SuccessBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource SuccessHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="{StaticResource DangerBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource DangerHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Width" Value="38"/>
+            <Setter Property="Height" Value="38"/>
+        </Style>
+        
+        <!-- Стиль TextBox -->
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="{StaticResource SurfaceLightBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="CaretBrush" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Стиль ListBox -->
+        <Style TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <ContentPresenter/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Стиль Slider -->
+        <Style TargetType="Slider">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid>
+                            <Border Height="6" Background="{StaticResource SurfaceLightBrush}" CornerRadius="3"/>
+                            <Track x:Name="PART_Track">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Width="18" Height="18" Fill="{StaticResource PrimaryBrush}"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Стиль CheckBox -->
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+    </Window.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Заголовок -->
+        <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" Padding="16,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock Text="📖" FontSize="24" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Text="SubtitleReader" 
+                               FontSize="20" 
+                               FontWeight="Bold" 
+                               Foreground="{StaticResource TextBrush}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Content="👁️ Overlay" 
+                            Style="{StaticResource ModernButton}"
+                            Command="{Binding ToggleOverlayCommand}"
+                            Margin="0,0,8,0"/>
+                    <Button Content="⚙️ Настройки" 
+                            Style="{StaticResource ModernButton}"
+                            Command="{Binding OpenSettingsCommand}"
+                            Margin="0,0,8,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+        
+        <!-- Основной контент -->
+        <Grid Grid.Row="1" Margin="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="320"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="300"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- Левая панель: Области -->
+            <Border Grid.Column="0" Background="{StaticResource SurfaceBrush}" CornerRadius="12" Margin="0,0,8,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <Border Grid.Row="0" Padding="16">
+                        <StackPanel>
+                            <TextBlock Text="📍 Области текста" 
+                                       FontSize="16" 
+                                       FontWeight="Bold" 
+                                       Foreground="{StaticResource TextBrush}"/>
+                            <TextBlock Text="{Binding Regions.Count, StringFormat={}Всего: {0}}" 
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       FontSize="12"
+                                       Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    
+                    <ListBox Grid.Row="1" 
+                             x:Name="RegionsListBox"
+                             ItemsSource="{Binding Regions}"
+                             SelectedItem="{Binding SelectedRegion}"
+                             Margin="8,0,8,8"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{StaticResource SurfaceLightBrush}" 
+                                        Padding="12" 
+                                        CornerRadius="8"
+                                        BorderBrush="{StaticResource BorderBrush}"
+                                        BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding Name}" 
+                                                       FontWeight="SemiBold" 
+                                                       FontSize="14"
+                                                       Foreground="{StaticResource TextBrush}"/>
+                                            <TextBlock Text="{Binding Text}" 
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Foreground="{StaticResource TextMutedBrush}"
+                                                       FontSize="12"
+                                                       Margin="0,4,0,0"
+                                                       MaxHeight="36"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                                <Border Background="{StaticResource PrimaryBrush}" 
+                                                        CornerRadius="4" 
+                                                        Padding="6,2"
+                                                        Margin="0,0,6,0">
+                                                    <TextBlock Text="{Binding ReadingSpeed, StringFormat={}{0:F1}x}" 
+                                                               Foreground="White" 
+                                                               FontSize="10"/>
+                                                </Border>
+                                                <Border Background="{StaticResource SuccessBrush}" 
+                                                        CornerRadius="4" 
+                                                        Padding="6,2"
+                                                        Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="Активна" 
+                                                               Foreground="White" 
+                                                               FontSize="10"/>
+                                                </Border>
+                                                <Border Background="{StaticResource WarningBrush}" 
+                                                        CornerRadius="4" 
+                                                        Padding="6,2"
+                                                        Margin="6,0,0,0"
+                                                        Visibility="{Binding IsMonitoring, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="🔄" FontSize="10"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    
+                    <StackPanel Grid.Row="2" Margin="12">
+                        <Button Content="🎯 Выделить область на экране" 
+                                Style="{StaticResource SuccessButton}"
+                                Command="{Binding AddRegionFromScreenCommand}"
+                                Margin="0,0,0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="+ Добавить" 
+                                    Style="{StaticResource ModernButton}"
+                                    Command="{Binding AddRegionCommand}"
+                                    Margin="0,0,4,0"/>
+                            <Button Grid.Column="1" Content="− Удалить" 
+                                    Style="{StaticResource DangerButton}"
+                                    Command="{Binding RemoveRegionCommand}"
+                                    Margin="4,0,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            
+            <!-- Центральная панель: Редактор -->
+            <Grid Grid.Column="1" Margin="8,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Настройки области -->
+                <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="✏️ Редактор области" 
+                                   FontSize="16" 
+                                   FontWeight="Bold" 
+                                   Foreground="{StaticResource TextBrush}"
+                                   Margin="0,0,0,16"/>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="200"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+                            
+                            <TextBlock Grid.Row="0" Grid.Column="0" 
+                                       Text="Название:" 
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       VerticalAlignment="Center" 
+                                       Margin="0,0,12,8"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" 
+                                     Text="{Binding SelectedRegion.Name, UpdateSourceTrigger=PropertyChanged}"
+                                     Margin="0,0,16,8"/>
+                            
+                            <TextBlock Grid.Row="0" Grid.Column="2" 
+                                       Text="Скорость:" 
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       VerticalAlignment="Center" 
+                                       Margin="0,0,12,8"/>
+                            <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal" Margin="0,0,0,8">
+                                <Slider Minimum="0.5" Maximum="2.0" 
+                                        Value="{Binding SelectedRegion.ReadingSpeed, UpdateSourceTrigger=PropertyChanged}"
+                                        Width="140" 
+                                        VerticalAlignment="Center"
+                                        TickFrequency="0.1"
+                                        IsSnapToTickEnabled="True"/>
+                                <TextBlock Text="{Binding SelectedRegion.ReadingSpeed, StringFormat={}{0:F1}x}" 
+                                           Foreground="{StaticResource TextBrush}"
+                                           Margin="8,0,0,0" 
+                                           VerticalAlignment="Center"
+                                           MinWidth="35"/>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                                <CheckBox Content="Активна" 
+                                          IsChecked="{Binding SelectedRegion.IsActive}"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,16,0"/>
+                                <CheckBox Content="Авто-чтение (читает новый текст автоматически)" 
+                                          IsChecked="{Binding SelectedRegion.AutoRead}"
+                                          VerticalAlignment="Center"
+                                          ToolTip="При включении мониторинга будет автоматически читать новый текст в этой области"/>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Row="1" Grid.Column="3" Orientation="Horizontal">
+                                <TextBlock Text="Интервал:" 
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           VerticalAlignment="Center" 
+                                           Margin="0,0,8,0"/>
+                                <TextBox Text="{Binding SelectedRegion.MonitorIntervalMs, UpdateSourceTrigger=PropertyChanged}"
+                                         Width="60"/>
+                                <TextBlock Text="мс" 
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           VerticalAlignment="Center" 
+                                           Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                        
+                        <!-- Координаты области -->
+                        <Border Background="{StaticResource SurfaceLightBrush}" 
+                                CornerRadius="6" 
+                                Padding="12" 
+                                Margin="0,12,0,0">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <TextBlock Grid.Column="0"
+                                               Text="📐 Координаты области" 
+                                               Foreground="{StaticResource TextBrush}"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                    
+                                    <Button Grid.Column="2" 
+                                            Content="🎯 Выделить заново" 
+                                            Style="{StaticResource ModernButton}"
+                                            Command="{Binding ReselectRegionCommand}"
+                                            Padding="10,6"/>
+                                </Grid>
+                                
+                                <Grid Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <!-- X -->
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="X (слева)" 
+                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                   FontSize="11"
+                                                   Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding SelectedRegion.BoundsX, UpdateSourceTrigger=PropertyChanged}"
+                                                 Padding="8,6"/>
+                                    </StackPanel>
+                                    
+                                    <!-- Y -->
+                                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,8,0">
+                                        <TextBlock Text="Y (сверху)" 
+                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                   FontSize="11"
+                                                   Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding SelectedRegion.BoundsY, UpdateSourceTrigger=PropertyChanged}"
+                                                 Padding="8,6"/>
+                                    </StackPanel>
+                                    
+                                    <!-- Width -->
+                                    <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,8,0">
+                                        <TextBlock Text="Ширина" 
+                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                   FontSize="11"
+                                                   Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding SelectedRegion.BoundsWidth, UpdateSourceTrigger=PropertyChanged}"
+                                                 Padding="8,6"/>
+                                    </StackPanel>
+                                    
+                                    <!-- Height -->
+                                    <StackPanel Grid.Row="0" Grid.Column="3">
+                                        <TextBlock Text="Высота" 
+                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                   FontSize="11"
+                                                   Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding SelectedRegion.BoundsHeight, UpdateSourceTrigger=PropertyChanged}"
+                                                 Padding="8,6"/>
+                                    </StackPanel>
+                                    
+                                    <!-- Подсказка -->
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4"
+                                               Text="💡 Можно вводить координаты вручную или использовать кнопку выше для выделения на экране"
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               FontSize="10"
+                                               TextWrapping="Wrap"
+                                               Margin="0,8,0,0"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Текст области -->
+                <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="20">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                            <TextBlock Text="📝 Текст области" 
+                                       FontSize="16" 
+                                       FontWeight="Bold" 
+                                       Foreground="{StaticResource TextBrush}"
+                                       VerticalAlignment="Center"/>
+                            <Button Content="📷 Захватить текст" 
+                                    Style="{StaticResource ModernButton}"
+                                    Command="{Binding CaptureRegionTextCommand}"
+                                    Margin="16,0,0,0"
+                                    Padding="12,6"/>
+                            <Button Content="📋 Копировать" 
+                                    Style="{StaticResource ModernButton}"
+                                    Command="{Binding CopyTextCommand}"
+                                    Margin="8,0,0,0"
+                                    Padding="12,6"/>
+                        </StackPanel>
+                        
+                        <TextBox Grid.Row="1" 
+                                 Text="{Binding SelectedRegion.Text, UpdateSourceTrigger=PropertyChanged}"
+                                 TextWrapping="Wrap" 
+                                 AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto"
+                                 FontSize="14"/>
+                    </Grid>
+                </Border>
+                
+                <!-- Кнопки управления -->
+                <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="16" Margin="0,8,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                            <Button Content="▶ Читать" 
+                                    Style="{StaticResource SuccessButton}"
+                                    Command="{Binding ReadRegionCommand}"
+                                    Margin="0,0,8,0"/>
+                            <Button Content="⏹ Стоп" 
+                                    Style="{StaticResource DangerButton}"
+                                    Command="{Binding StopReadingCommand}"
+                                    Margin="0,0,8,0"/>
+                            <Button Content="▶▶ Читать все" 
+                                    Style="{StaticResource ModernButton}"
+                                    Command="{Binding ReadAllRegionsCommand}"/>
+                        </StackPanel>
+                        
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="🔄 Старт мониторинга" 
+                                    Style="{StaticResource SuccessButton}"
+                                    Command="{Binding StartMonitoringCommand}"
+                                    Margin="0,0,8,0"/>
+                            <Button Content="⏸ Стоп мониторинга" 
+                                    Style="{StaticResource DangerButton}"
+                                    Command="{Binding StopMonitoringCommand}"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+            
+            <!-- Правая панель: Заготовки -->
+            <Border Grid.Column="2" Background="{StaticResource SurfaceBrush}" CornerRadius="12" Margin="8,0,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <Border Grid.Row="0" Padding="16">
+                        <StackPanel>
+                            <TextBlock Text="🎮 Заготовки для игр" 
+                                       FontSize="16" 
+                                       FontWeight="Bold" 
+                                       Foreground="{StaticResource TextBrush}"/>
+                            <TextBlock Text="{Binding Presets.Count, StringFormat={}Сохранено: {0}}" 
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       FontSize="12"
+                                       Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    
+                    <ListBox Grid.Row="1" 
+                             x:Name="PresetsListBox"
+                             ItemsSource="{Binding Presets}"
+                             SelectedItem="{Binding CurrentPreset}"
+                             Margin="8,0,8,8"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{StaticResource SurfaceLightBrush}" 
+                                        Padding="12" 
+                                        CornerRadius="8"
+                                        BorderBrush="{StaticResource BorderBrush}"
+                                        BorderThickness="1">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Name}" 
+                                                   FontWeight="SemiBold" 
+                                                   FontSize="14"
+                                                   Foreground="{StaticResource TextBrush}"/>
+                                        <TextBlock Text="{Binding Description}" 
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                   FontSize="12"
+                                                   Margin="0,4,0,0"
+                                                   Visibility="{Binding Description, Converter={StaticResource StringToVisibility}}"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                            <Border Background="{StaticResource InfoBrush}" 
+                                                    CornerRadius="4" 
+                                                    Padding="6,2">
+                                                <TextBlock Text="{Binding Regions.Count, StringFormat={}Областей: {0}}" 
+                                                           Foreground="White" 
+                                                           FontSize="10"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding ModifiedAt, StringFormat={}Изменено: {0:g}}" 
+                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                   FontSize="10"
+                                                   Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    
+                    <StackPanel Grid.Row="2" Margin="12">
+                        <Button Content="💾 Сохранить заготовку" 
+                                Style="{StaticResource SuccessButton}"
+                                Command="{Binding SavePresetCommand}"
+                                Margin="0,0,0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="📂 Загрузить" 
+                                    Style="{StaticResource ModernButton}"
+                                    Command="{Binding LoadPresetCommand}"
+                                    Margin="0,0,4,0"/>
+                            <Button Grid.Column="1" Content="🗑 Удалить" 
+                                    Style="{StaticResource DangerButton}"
+                                    Command="{Binding DeletePresetCommand}"
+                                    Margin="4,0,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+        
+        <!-- Статус бар -->
+        <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" Padding="16,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <TextBlock Grid.Column="0" 
+                           Text="{Binding StatusMessage}" 
+                           Foreground="{StaticResource TextMutedBrush}"
+                           VerticalAlignment="Center"/>
+                
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Border Background="{StaticResource SurfaceLightBrush}" 
+                            CornerRadius="4" 
+                            Padding="8,4"
+                            Margin="0,0,8,0">
+                        <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11">
+                            <Run Text="OCR: "/>
+                            <Run Text="{Binding OcrLanguage, Mode=OneWay}" Foreground="{StaticResource SuccessBrush}"/>
+                        </TextBlock>
+                    </Border>
+                    <Border Background="{StaticResource SurfaceLightBrush}" 
+                            CornerRadius="4" 
+                            Padding="8,4">
+                        <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11">
+                            <Run Text="Мониторинг: "/>
+                            <Run Text="{Binding IsMonitoringActive, Converter={StaticResource BoolToStatus}, Mode=OneWay}"/>
+                        </TextBlock>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

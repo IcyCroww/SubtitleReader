@@ -1,0 +1,171 @@
+<Window x:Class="SubtitleReader.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Настройки"
+        Width="500" Height="550"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="#F5F5F5">
+    
+    <Window.Resources>
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#DDD"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+        
+        <Style TargetType="ComboBox">
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+        
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#4A90E2"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="4" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#357ABD"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <TextBlock Grid.Row="0" 
+                   Text="⚙️ Настройки" 
+                   FontSize="24" 
+                   FontWeight="Bold"
+                   Margin="0,0,0,20"/>
+        
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Голос -->
+                <Border Background="White" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="🔊 Голос" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+                        
+                        <TextBlock Text="Выберите голос:" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="VoiceComboBox" Margin="0,0,0,12"/>
+                        
+                        <TextBlock Text="Громкость:" Margin="0,0,0,4"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Slider x:Name="VolumeSlider" 
+                                    Minimum="0" Maximum="100" 
+                                    Width="300" 
+                                    VerticalAlignment="Center"/>
+                            <TextBlock x:Name="VolumeText" 
+                                       Text="100%" 
+                                       Margin="8,0,0,0" 
+                                       VerticalAlignment="Center"
+                                       MinWidth="40"/>
+                        </StackPanel>
+                        
+                        <TextBlock Text="Скорость по умолчанию:" Margin="0,12,0,4"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Slider x:Name="SpeedSlider" 
+                                    Minimum="0.5" Maximum="2.0" 
+                                    Width="300" 
+                                    VerticalAlignment="Center"
+                                    TickFrequency="0.1"
+                                    IsSnapToTickEnabled="True"/>
+                            <TextBlock x:Name="SpeedText" 
+                                       Text="1.0x" 
+                                       Margin="8,0,0,0" 
+                                       VerticalAlignment="Center"
+                                       MinWidth="40"/>
+                        </StackPanel>
+                        
+                        <Button Content="🔊 Тест голоса" 
+                                Click="TestVoice_Click"
+                                HorizontalAlignment="Left"
+                                Margin="0,12,0,0"
+                                Background="#17A2B8"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Горячие клавиши -->
+                <Border Background="White" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="⌨️ Горячие клавиши" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="120"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Начать мониторинг:" VerticalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="HotkeyStartTextBox" Margin="0,0,0,8"/>
+                            
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Остановить мониторинг:" VerticalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="HotkeyStopTextBox" Margin="0,0,0,8"/>
+                            
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Прочитать выбранное:" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" x:Name="HotkeyReadTextBox"/>
+                        </Grid>
+                        
+                        <TextBlock Text="Примеры: F9, Ctrl+F9, Alt+Shift+R" 
+                                   Foreground="#666" 
+                                   FontSize="11" 
+                                   Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Общие -->
+                <Border Background="White" CornerRadius="8" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="🔧 Общие" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+                        
+                        <CheckBox x:Name="MinimizeToTrayCheckBox" 
+                                  Content="Сворачивать в трей" 
+                                  Margin="0,0,0,8"/>
+                        <CheckBox x:Name="StartMinimizedCheckBox" 
+                                  Content="Запускать свёрнутым"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+        
+        <StackPanel Grid.Row="2" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right"
+                    Margin="0,16,0,0">
+            <Button Content="Отмена" 
+                    Click="CancelButton_Click"
+                    Background="#6C757D"
+                    Margin="0,0,8,0"/>
+            <Button Content="Сохранить" 
+                    Click="SaveButton_Click"
+                    Background="#28A745"/>
+        </StackPanel>
+    </Grid>
+</Window>
